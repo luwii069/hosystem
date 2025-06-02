@@ -65,6 +65,22 @@ class Appointments(db.model):
 
     def __repr__(self):
         return f"Appointment('{self.patient_id}', '{self.doctor_id}', '{self.appointment_time}')"
+    
+
+
+class MedicalRecord(db.model):
+    __tablename_="medicalrecords"
+    id = db.Column(db.BigInteger, primary_key=True)
+    patient_id = db.Column(db.BigInteger, db.ForeignKey('patients.id'), nullable=False)
+    diagnosis = db.Column(db.String(255), nullable=False)
+    treatment = db.Column(db.Text)
+    date_recorded = db.Column(db.DateTime, default=datetime.utcnow)
+
+    created_by_admin_id = db.Column(db.Integer, db.ForeignKey('admins.id'))
+    created_by_admin = db.relationship('Admin', foreign_keys=[created_by_admin_id])
+
+    def __repr__(self):
+        return f"MedicalRecord('{self.patient_id}', '{self.diagnosis}')"
 
 
 
