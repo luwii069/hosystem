@@ -31,5 +31,25 @@ class Patient(db.model):
 
     def __repr__(self):
         return f"Patient('{self.name}', '{self.email}', '{self.admn_no}')"
+
+
+class Doctor(db.model):
+    __tablename__="doctors"
+    id = db.Column(db.BigInteger, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    specialization = db.Column(db.String(100))
+    phone = db.Column(db.String(15))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    created_by_admin_id = db.Column(db.Integer, db.ForeignKey('admins.id'))
+    created_by_admin = db.relationship('Admin', foreign_keys=[created_by_admin_id])
+
+    appointments = db.relationship('Appointment', backref='doctor', lazy=True)
+
+    def __repr__(self):
+        return f"Doctor('{self.name}', '{self.specialization}')"
+
+
  
 
