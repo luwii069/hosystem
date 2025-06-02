@@ -51,5 +51,23 @@ class Doctor(db.model):
         return f"Doctor('{self.name}', '{self.specialization}')"
 
 
+class Appointments(db.model):
+    __tablename__="appointments"
+    id = db.Column(db.BigInteger, primary_key=True)
+    patient_id = db.Column(db.BigInteger, db.ForeignKey('patients.id'), nullable=False)
+    doctor_id = db.Column(db.BigInteger, db.ForeignKey('doctors.id'), nullable=False)
+    appointment_time = db.Column(db.DateTime, nullable=False)
+    reason = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    created_by_admin_id = db.Column(db.Integer, db.ForeignKey('admins.id'))
+    created_by_admin = db.relationship('Admin', foreign_keys=[created_by_admin_id])
+
+    def __repr__(self):
+        return f"Appointment('{self.patient_id}', '{self.doctor_id}', '{self.appointment_time}')"
+
+
+
+
  
 
