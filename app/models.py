@@ -1,21 +1,21 @@
 from . import db 
 from flask import json
 from sqlalchemy import Numeric
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 
-class Admin (db.model):
-    __tablename__="admins"
+class Admin(db.Model):
+    __tablename__ = "admins"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)  # should be hashed
+    password = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         return f"Admin('{self.username}')"
 
-class Patient(db.model):
-    __tablename__ ="patients"  
-     
+
+class Patient(db.Model):
+    __tablename__ = "patients"
     id = db.Column(db.BigInteger, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -35,8 +35,8 @@ class Patient(db.model):
         return f"Patient('{self.name}', '{self.email}', '{self.admn_no}')"
 
 
-class Doctor(db.model):
-    __tablename__="doctors"
+class Doctor(db.Model):
+    __tablename__ = "doctors"
     id = db.Column(db.BigInteger, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -53,8 +53,8 @@ class Doctor(db.model):
         return f"Doctor('{self.name}', '{self.specialization}')"
 
 
-class Appointments(db.model):
-    __tablename__="appointments"
+class Appointment(db.Model):
+    __tablename__ = "appointments"
     id = db.Column(db.BigInteger, primary_key=True)
     patient_id = db.Column(db.BigInteger, db.ForeignKey('patients.id'), nullable=False)
     doctor_id = db.Column(db.BigInteger, db.ForeignKey('doctors.id'), nullable=False)
@@ -67,11 +67,10 @@ class Appointments(db.model):
 
     def __repr__(self):
         return f"Appointment('{self.patient_id}', '{self.doctor_id}', '{self.appointment_time}')"
-    
 
 
-class MedicalRecord(db.model):
-    __tablename_="medicalrecords"
+class MedicalRecord(db.Model):
+    __tablename__ = "medicalrecords"
     id = db.Column(db.BigInteger, primary_key=True)
     patient_id = db.Column(db.BigInteger, db.ForeignKey('patients.id'), nullable=False)
     diagnosis = db.Column(db.String(255), nullable=False)
@@ -83,9 +82,6 @@ class MedicalRecord(db.model):
 
     def __repr__(self):
         return f"MedicalRecord('{self.patient_id}', '{self.diagnosis}')"
-
-
-
 
  
 
