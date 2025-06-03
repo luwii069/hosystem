@@ -9,6 +9,7 @@ from . import db,bcrypt
 from datetime import timedelta,datetime,timezone
 
 from .models import User
+from . import models
 
 import json
 

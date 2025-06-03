@@ -13,8 +13,8 @@ class Admin(db.Model):
     def __repr__(self):
         return f"Admin('{self.username}')"
 
-
-class Patient(db.Model):
+##
+class User(db.Model):
     __tablename__ = "patients"
     id = db.Column(db.BigInteger, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
