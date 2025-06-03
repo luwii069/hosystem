@@ -1,87 +1,87 @@
 from . import db 
 from flask import json
 from sqlalchemy import Numeric
-from datetime import datetime, timedelta
+
+from datetime import datetime
 
 class Admin(db.Model):
-    __tablename__ = "admins"
+    __tablename__ = 'admins'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def __repr__(self):
-        return f"Admin('{self.username}')"
-
-##
-class User(db.Model):
-    __tablename__ = "patients"
-    id = db.Column(db.BigInteger, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    admn_no = db.Column(db.String(20), unique=True, nullable=False)
-    phone = db.Column(db.String(15))
-    gender = db.Column(db.String(10))
-    date_of_birth = db.Column(db.Date)
+    password = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    created_by_admin_id = db.Column(db.Integer, db.ForeignKey('admins.id'))
-    created_by_admin = db.relationship('Admin', foreign_keys=[created_by_admin_id])
-
-    appointments = db.relationship('Appointment', backref='patient', lazy=True)
-    medical_records = db.relationship('MedicalRecord', backref='patient', lazy=True)
-
-    def __repr__(self):
-        return f"Patient('{self.name}', '{self.email}', '{self.admn_no}')"
 
 
 class Doctor(db.Model):
-    __tablename__ = "doctors"
-    id = db.Column(db.BigInteger, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
+    __tablename__ = 'doctors'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    specialization = db.Column(db.String(100))
-    phone = db.Column(db.String(15))
+    password = db.Column(db.String(255), nullable=False)
+    specialization = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    created_by_admin_id = db.Column(db.Integer, db.ForeignKey('admins.id'))
-    created_by_admin = db.relationship('Admin', foreign_keys=[created_by_admin_id])
+    # One-to-one with User (Patient)
+    patient = db.relationship("User", back_populates="doctor", uselist=False)
 
-    appointments = db.relationship('Appointment', backref='doctor', lazy=True)
+    # Doctor's medical records (one-to-many)
+    medical_records = db.relationship("MedicalRecord", back_populates="doctor", cascade="all, delete-orphan")
 
-    def __repr__(self):
-        return f"Doctor('{self.name}', '{self.specialization}')"
+    # Appointments (if needed in future)
+    appointments = db.relationship("Appointment", back_populates="doctor", cascade="all, delete-orphan")
+
+
+class User(db.Model):  # Patient
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    admn_no = db.Column(db.String(50), unique=True, nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # One-to-one link to doctor
+    doctor = db.relationship("Doctor", back_populates="patient")
+
+    # Patient's medical records (one-to-many)
+    medical_records = db.relationship("MedicalRecord", back_populates="patient", cascade="all, delete-orphan")
+
+    # Appointments (if needed in future)
+    appointments = db.relationship("Appointment", back_populates="patient", cascade="all, delete-orphan")
+
+    def details(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "admn_no": self.admn_no,
+            "doctor_id": self.doctor_id
+        }
 
 
 class Appointment(db.Model):
-    __tablename__ = "appointments"
-    id = db.Column(db.BigInteger, primary_key=True)
-    patient_id = db.Column(db.BigInteger, db.ForeignKey('patients.id'), nullable=False)
-    doctor_id = db.Column(db.BigInteger, db.ForeignKey('doctors.id'), nullable=False)
-    appointment_time = db.Column(db.DateTime, nullable=False)
-    reason = db.Column(db.String(255))
+    __tablename__ = 'appointments'
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    date = db.Column(db.DateTime, nullable=False)
+    reason = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    created_by_admin_id = db.Column(db.Integer, db.ForeignKey('admins.id'))
-    created_by_admin = db.relationship('Admin', foreign_keys=[created_by_admin_id])
-
-    def __repr__(self):
-        return f"Appointment('{self.patient_id}', '{self.doctor_id}', '{self.appointment_time}')"
+    doctor = db.relationship("Doctor", back_populates="appointments")
+    patient = db.relationship("User", back_populates="appointments")
 
 
 class MedicalRecord(db.Model):
-    __tablename__ = "medicalrecords"
-    id = db.Column(db.BigInteger, primary_key=True)
-    patient_id = db.Column(db.BigInteger, db.ForeignKey('patients.id'), nullable=False)
-    diagnosis = db.Column(db.String(255), nullable=False)
-    treatment = db.Column(db.Text)
-    date_recorded = db.Column(db.DateTime, default=datetime.utcnow)
+    __tablename__ = 'medical_records'
+    id = db.Column(db.Integer, primary_key=True)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctors.id'), nullable=False)
+    patient_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    diagnosis = db.Column(db.Text, nullable=False)
+    treatment = db.Column(db.Text, nullable=False)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
 
-    created_by_admin_id = db.Column(db.Integer, db.ForeignKey('admins.id'))
-    created_by_admin = db.relationship('Admin', foreign_keys=[created_by_admin_id])
-
-    def __repr__(self):
-        return f"MedicalRecord('{self.patient_id}', '{self.diagnosis}')"
-
- 
-
+    doctor = db.relationship("Doctor", back_populates="medical_records")
+    patient = db.relationship("User", back_populates="medical_records")

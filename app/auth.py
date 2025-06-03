@@ -1,116 +1,120 @@
-from flask import Blueprint,jsonify,request
 
-from flask_jwt_extended import create_access_token,JWTManager
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import (
+    create_access_token, jwt_required, get_jwt_identity, unset_jwt_cookies
+)
+from datetime import timedelta, datetime
+from . import db, bcrypt
+from .models import Admin, Doctor, User
 
-from flask_jwt_extended import jwt_required, get_jwt_identity,unset_jwt_cookies
-
-from . import db,bcrypt
-
-from datetime import timedelta,datetime,timezone
-
-from .models import User
-from . import models
-
-import json
+auth_blueprint = Blueprint('auth', __name__)
 
 
-auth_blueprint=Blueprint('auth',__name__)#name of blue print
-#signing up route
 @auth_blueprint.route("/signup", methods=["POST"])
 def signup():
-    body = request.get_json()
-    name = body.get('name')
-    email = body.get('email')
-    admn_no = body.get('admn_no')  
-    password = body.get('password')
+    data = request.get_json()
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
+    role = data.get('role')
 
-    ## Validation
-    if not email or not password or not name:
-        return jsonify({'message': "Required field missing"}), 400
-    
-    if len(email) < 4:
-        return jsonify({'message': "Email too short"}), 400
-    
-    if len(name) < 4:
-        return jsonify({'message': "Name too short"}), 400
-    
-    if len(password) < 4:
-        return jsonify({'message': "Password too short"}), 400
-    
-    if len(admn_no) < 4:
-        return jsonify({'message': "Admission number too short"}), 400
-    
-    existing_member = User.query.filter_by(email=email).first()
-    existing_admn_no = User.query.filter_by(admn_no=admn_no).first()
+    if not all([name, email, password, role]):
+        return jsonify({'message': "Missing required fields"}), 400
 
-    if existing_member:
-        return jsonify({'message': f"Email already in use {email}"}), 400
-    
-    if existing_admn_no:
-        return jsonify({'message': f"Admission number already in use {admn_no}"}), 400
-    
     hashed_password = bcrypt.generate_password_hash(password).decode('utf8')
-    
-    member = User(name=name, email=email, password=hashed_password, admn_no=admn_no)
-    db.session.add(member)
+
+    if role == 'admin':
+        if Admin.query.filter_by(email=email).first():
+            return jsonify({'message': "Email already used"}), 400
+        user = Admin(name=name, email=email, password=hashed_password)
+
+    elif role == 'doctor':
+        specialization = data.get('specialization', '')
+        if Doctor.query.filter_by(email=email).first():
+            return jsonify({'message': "Email already used"}), 400
+        user = Doctor(name=name, email=email, password=hashed_password, specialization=specialization)
+
+    elif role == 'patient':
+        admn_no = data.get('admn_no')
+
+        if User.query.filter((User.email == email) | (User.admn_no == admn_no)).first():
+            return jsonify({'message': "Email or admission number already used"}), 400
+
+        # Find a doctor without a patient assigned
+        free_doctor = Doctor.query.outerjoin(User).filter(User.id == None).first()
+        if not free_doctor:
+            return jsonify({'message': "No available doctor to assign"}), 400
+
+        if not admn_no:
+            now = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+            admn_no = f"ADM{now}"
+
+        user = User(name=name, email=email, password=hashed_password, admn_no=admn_no, doctor_id=free_doctor.id)
+
+    else:
+        return jsonify({'message': "Invalid role"}), 400
+
+    db.session.add(user)
     db.session.commit()
     return jsonify({"message": "Sign up success"}), 201
 
-@auth_blueprint.route("/login",methods=["POST"])
+
+@auth_blueprint.route("/login", methods=["POST"])
 def login():
-    body=request.get_json()
-    email=body.get('email')
-    password=body.get('password')
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+    role = data.get('role')
 
-        ## Validation
-    if not email or not password:
-        return jsonify({'message':"Required field missing"}),400
-    user=User.query.filter_by(email=email).first()
+    if not all([email, password, role]):
+        return jsonify({'message': "Required field missing"}), 400
 
- 
-    if not user:
-        return jsonify({'message':"User not found"}),400
-    
-    
-    pass_ok=bcrypt.check_password_hash(user.password.encode('utf-8'),password)
-    
-    if not pass_ok:
-        return jsonify({"message":"Invalid password"}),401
+    user = None
+    if role == 'admin':
+        user = Admin.query.filter_by(email=email).first()
+    elif role == 'doctor':
+        user = Doctor.query.filter_by(email=email).first()
+    elif role == 'patient':
+        admn_no = data.get('admn_no')
+        if not admn_no:
+            return jsonify({'message': "Admission number required for patients"}), 400
+        user = User.query.filter_by(email=email, admn_no=admn_no).first()
+    else:
+        return jsonify({"message": "Invalid role"}), 400
 
-    expires=datetime.utcnow()+timedelta(hours=24)
-    ##access token
-    access_token=create_access_token(identity={"id":user.id,"name":user.name,"role":"cats and dogs"},expires_delta=(expires-datetime.utcnow()))
-   
-    
-    return jsonify({'user':user.details(),'token':access_token})
+    if not user or not bcrypt.check_password_hash(user.password.encode('utf-8'), password):
+        return jsonify({"message": "Invalid credentials"}), 401
 
-@auth_blueprint.route('/users', methods=['GET'])
-#@jwt_required()
-def get_all_users():
-    users = User.query.all()
-    user_data = [user.details() for user in users]
-    return jsonify({'users': user_data})
+    token = create_access_token(
+        identity={"id": user.id, "name": user.name, "role": role},
+        expires_delta=timedelta(hours=24)
+    )
+
+    return jsonify({
+        "message": "Login successful",
+        "token": token,
+        "user": {"id": user.id, "name": user.name, "role": role}
+    }), 200
+
 
 @auth_blueprint.route("/logout", methods=["POST"])
 @jwt_required()
 def logout():
-    user_id = get_jwt_identity()["id"]
-    response = jsonify({"msg": "User logged out successfully"})
+    response = jsonify({"message": "Logout successful"})
     unset_jwt_cookies(response)
     return response, 200
 
-@auth_blueprint.route("/search-users", methods=["POST"])
-#@jwt_required()
-def search_users():
+
+@auth_blueprint.route("/search-patients", methods=["POST"])
+@jwt_required()
+def search_patients():
     data = request.get_json()
     admn_no = data.get('admn_no')
-
     if not admn_no:
         return jsonify({'message': "Admission number is required"}), 400
 
-    users = User.query.filter(User.admn_no.like(f"%{admn_no}%")).all()
+    patients = User.query.filter(User.admn_no.like(f"%{admn_no}%")).all()
+    if not patients:
+        return jsonify({'message': "No patients found"}), 404
 
-    if not users:
-        return jsonify({'message': "No users found"}), 404
-
-    return jsonify({'users': [{'id': user.id, 'name': user.name, 'email': user.email, 'admn_no': user.admn_no} for user in users]}), 200
+    return jsonify({'patients': [p.details() for p in patients]}), 200
