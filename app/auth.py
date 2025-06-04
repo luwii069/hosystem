@@ -105,16 +105,4 @@ def logout():
     return response, 200
 
 
-@auth_blueprint.route("/search-patients", methods=["POST"])
-@jwt_required()
-def search_patients():
-    data = request.get_json()
-    admn_no = data.get('admn_no')
-    if not admn_no:
-        return jsonify({'message': "Admission number is required"}), 400
 
-    patients = User.query.filter(User.admn_no.like(f"%{admn_no}%")).all()
-    if not patients:
-        return jsonify({'message': "No patients found"}), 404
-
-    return jsonify({'patients': [p.details() for p in patients]}), 200
