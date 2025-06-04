@@ -26,7 +26,10 @@ def create_app():
     CORS(app)
 
         # register blue prints
+        #authentication blueprint
     from .auth import auth_blueprint
-
     app.register_blueprint(auth_blueprint)
+    #patient blueprint
+    from .patients import User_blueprint
+    app.register_blueprint(User_blueprint)
     return app
