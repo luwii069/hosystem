@@ -36,6 +36,10 @@ def create_app():
     #doctor blueprint 
     from .doctor import Doctor_blueprint
     app.register_blueprint(Doctor_blueprint)
+
+        #appointment blueprint
+    from .appointment import Appointment_blueprint
+    app.register_blueprint(Appointment_blueprint)
     return app
 
 
