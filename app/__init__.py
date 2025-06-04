@@ -32,4 +32,12 @@ def create_app():
     #patient blueprint
     from .patients import User_blueprint
     app.register_blueprint(User_blueprint)
+    
+    #doctor blueprint 
+    from .doctor import Doctor_blueprint
+    app.register_blueprint(Doctor_blueprint)
     return app
+
+
+    
+
