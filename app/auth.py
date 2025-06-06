@@ -94,6 +94,7 @@ def login():
         "message": "Login successful",
         "token": token,
         "user": {"id": user.id, "name": user.name, "role": role}
+        
     }), 200
 
 
