@@ -7,7 +7,7 @@ from flask_jwt_extended import (
 
 User_blueprint = Blueprint('User_blueprint', __name__)
 
-#search patients
+# Search patients
 @User_blueprint.route("/search-patients", methods=["GET"])
 @jwt_required()
 def search_patients():
@@ -21,6 +21,7 @@ def search_patients():
 
     return jsonify({'patients': [p.details() for p in patients]}), 200
 
+# Get all patients
 @User_blueprint.route("/patients", methods=["GET"])
 @jwt_required()
 def get_all_patients():
@@ -29,3 +30,36 @@ def get_all_patients():
         return jsonify({'message': "No patients found"}), 404
 
     return jsonify({'patients': [p.details() for p in patients]}), 200
+
+@User_blueprint.route("/patients/<string:admn_no>", methods=["DELETE"])
+@jwt_required()
+def delete_patient_by_admn_no(admn_no):
+    patient = User.query.filter_by(admn_no=admn_no).first()
+    
+    if not patient:
+        return jsonify({'message': "Patient not found"}), 404
+
+    db.session.delete(patient)
+    db.session.commit()
+    
+    return jsonify({'message': "Patient deleted successfully"}), 200
+
+
+# Edit patient details
+@User_blueprint.route("/patients/<int:id>", methods=["PUT"])
+@jwt_required()
+def update_patient(id):
+    patient = User.query.get(id)
+    if not patient or patient.role != 'patient':
+        return jsonify({'message': "Patient not found"}), 404
+
+    data = request.get_json()
+    patient.name = data.get("name", patient.name)
+    patient.email = data.get("email", patient.email)
+    patient.admn_no = data.get("admn_no", patient.admn_no)
+
+    if data.get("password"):
+        patient.password = bcrypt.generate_password_hash(data.get("password")).decode('utf-8')
+
+    db.session.commit()
+    return jsonify({'message': "Patient updated successfully", 'patient': patient.details()}), 200

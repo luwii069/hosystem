@@ -35,28 +35,30 @@ def signup():
         user = Doctor(name=name, email=email, password=hashed_password, specialization=specialization)
 
     elif role == 'patient':
-        admn_no = data.get('admn_no')
+        # Check for existing email
+        if User.query.filter_by(email=email).first():
+            return jsonify({'message': "Email already used"}), 400
 
-        if User.query.filter((User.email == email) | (User.admn_no == admn_no)).first():
-            return jsonify({'message': "Email or admission number already used"}), 400
-
-        # Find a doctor without a patient assigned
+        # Find a doctor without patients assigned
         free_doctor = Doctor.query.outerjoin(User).filter(User.id == None).first()
         if not free_doctor:
             return jsonify({'message': "No available doctor to assign"}), 400
 
-        if not admn_no:
-            now = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-            admn_no = f"ADM{now}"
+        # Generate serial admission number (e.g., ADM001, ADM002)
+        last_patient = User.query.order_by(User.id.desc()).first()
+        next_number = 1 if not last_patient else last_patient.id + 1
+        admn_no = f"ADM{next_number:03d}"  # Pads with 0s to 3 digits
 
-        user = User(name=name, email=email, password=hashed_password, admn_no=admn_no, doctor_id=free_doctor.id)
+        user = User(name=name, email=email, password=hashed_password,
+                    admn_no=admn_no, doctor_id=free_doctor.id)
 
     else:
         return jsonify({'message': "Invalid role"}), 400
 
     db.session.add(user)
     db.session.commit()
-    return jsonify({"message": "Sign up success"}), 201
+
+    return jsonify({"message": "Sign up success", "role": role}), 201
 
 
 @auth_blueprint.route("/login", methods=["POST"])
