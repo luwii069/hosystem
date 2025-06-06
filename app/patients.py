@@ -6,7 +6,7 @@ from flask_jwt_extended import (
 )
 
 User_blueprint = Blueprint('User_blueprint', __name__)
-
+#get a specific patient 
 @User_blueprint.route("/search-patients", methods=["GET"])
 @jwt_required()
 def search_patients():
@@ -36,6 +36,7 @@ def get_all_patients():
 
     return jsonify({'patients': [p.details() for p in patients]}), 200
 
+#delete a patient
 @User_blueprint.route("/patients/<string:admn_no>", methods=["DELETE"])
 @jwt_required()
 def delete_patient_by_admn_no(admn_no):
@@ -50,7 +51,7 @@ def delete_patient_by_admn_no(admn_no):
     return jsonify({'message': "Patient deleted successfully"}), 200
 
 
-# Edit patient details
+# Edit patient details(still under review though)
 @User_blueprint.route("/patients/<int:id>", methods=["PUT"])
 @jwt_required()
 def update_patient(id):
