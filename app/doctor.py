@@ -32,3 +32,18 @@ def get_all_doctors():
 
     return jsonify({'doctors': doctor_list, 'count': len(doctor_list)}), 200
 
+#get a specific doctor by id
+@Doctor_blueprint.route('/doctors/<int:id>', methods=['GET'])
+@jwt_required()
+def get_doctor(id):
+    doctor = Doctor.query.get(id)
+    if not doctor:
+        return jsonify({'message': 'Doctor not found'}), 404
+
+    return jsonify({
+        'id': doctor.id,
+        'name': doctor.name,
+        'email': doctor.email,
+        'specialization': doctor.specialization  # or any other fields
+    }), 200
+
