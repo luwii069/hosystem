@@ -7,6 +7,7 @@ from flask_jwt_extended import (
 
 User_blueprint = Blueprint('User_blueprint', __name__)
 
+#search patients
 @User_blueprint.route("/search-patients", methods=["GET"])
 @jwt_required()
 def search_patients():
